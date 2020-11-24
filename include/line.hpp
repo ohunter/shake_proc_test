@@ -22,20 +22,25 @@
 
 class line
 {
-        static int cnt;
+        uint64_t id = 0;
 
-        int id = -1;
+        //Szudzik's pairing function for unsigned integers
+        uint64_t Szudzik(uint x, uint y) {
+                if (x != std::max(x, y))
+                        return y * y + x;
 
-        std::string file_name = "";
+                return x * x + x + y;
+        }
 
         public:
-                mutable int line_num = -1;
+                std::string file_name = "";
+                mutable uint line_num = 0;
                 mutable std::string content = "";
 
                 mutable std::string checksum = "";
-                mutable std::map<std::string, int> count;
+                mutable std::map<std::string, uint> count;
 
-                line(std::string fn) : id(line::cnt++), file_name(fn) {}
+                line(std::string fn, uint i, uint j = 0) : id(Szudzik(j, i)), file_name(fn) {}
 
                 std::string jsonify(int indentation = 0)
                 {
@@ -44,7 +49,7 @@ class line
 
                         ss << indent << "\"file\": \"" << this->file_name << "\"," << std::endl;
 
-                        if (this->line_num != -1)
+                        if (this->line_num != 0)
                                 ss << indent << "\"line\":" << this->line_num << "," << std::endl;
 
                         if (this->content != "")
@@ -91,16 +96,16 @@ class line
 
                 line operator+ (const line& other) const
                 {
-                        line l(this->file_name);
+                        line l(this->file_name, this->id, other.id);
 
-                        std::map<std::string, int>::const_iterator m1 = this->count.begin();
-                        std::map<std::string, int>::const_iterator m2 = other.count.begin();
+                        std::map<std::string, uint>::const_iterator m1 = this->count.begin();
+                        std::map<std::string, uint>::const_iterator m2 = other.count.begin();
 
-                        std::map<std::string, int>::iterator m3 = l.count.begin();
+                        std::map<std::string, uint>::iterator m3 = l.count.begin();
 
                         while (m1 != this->count.end() || m2 != other.count.end())
                         {
-                                if (m1 != this->count.end() || m2 != other.count.end())
+                                if (m1 != this->count.end() && m2 != other.count.end())
                                 {
                                         if (m1->first < m2->first)
                                         {
@@ -142,5 +147,3 @@ class line
                         return this->id < rhs.id;
                 }
 };
-
-int line::cnt = 0;
