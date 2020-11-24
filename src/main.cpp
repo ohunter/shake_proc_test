@@ -2,6 +2,7 @@
 #include <iostream>
 #include <fstream>
 #include <set>
+#include <numeric>
 
 // STL C Wrappers
 
@@ -10,7 +11,7 @@
 
 
 // Foreign Dependencies
-
+#include <omp.h>
 
 // Local headers
 #include "../include/line.hpp"
@@ -21,9 +22,7 @@ int preprocess(std::string path, std::set<line> *lines)
 {
         std::ifstream file(path, std::ios::in);
         std::string s;
-        int i = 0;
-
-        line l(path);
+        int i = 1;
 
         if (!file.is_open())
         {
@@ -33,6 +32,7 @@ int preprocess(std::string path, std::set<line> *lines)
 
         while (std::getline(file, s))
         {
+                line l(path, i);
                 l.line_num = i;
                 l.content = s;
 
@@ -45,22 +45,47 @@ int preprocess(std::string path, std::set<line> *lines)
 
 void process(std::set<line>* lines)
 {
+
+#if defined(_OPENMP)
+        int dist = std::distance(lines->begin(), lines->end());
+
+        #pragma omp parallel for
+                for (int i = 0; i < dist; i++)
+                        std::next(lines->begin(), i)->process();
+#else
         for (std::set<line>::iterator it = lines->begin(); it != lines->end(); it++)
-        // for (auto& it : *lines)
                 it->process();
-        
-        std::cout << "done\n";
+#endif
 }
 
-line postprocess(std::set<line>* lines)
+line postprocess(std::set<line>::iterator start, std::set<line>::iterator end, bool true_end)
 {
-        line l = *(lines->begin());
+        int dist = std::distance(start, end);
 
-        for (auto& it : *lines)
-                l += it;
+        if (dist == 1 && true_end)
+                return *start;
+        else if (dist == 1)
+                return *start + *end;
+        else
+        {
+        #if defined(_OPENMP)
+                line l1("", 0);
+                line l2("", 0);
 
-        return l;
+                #pragma omp task shared(l1)
+                l1 = postprocess(start, std::next(start, dist / 2), false);
+
+                #pragma omp task shared(l2)
+                l2 = postprocess(std::next(start, dist / 2), end, true_end);
+
+                #pragma omp taskwait
+                return l1 + l2;
+        #else
+                return postprocess(start, std::next(start, dist / 2), false) + postprocess(std::next(start, dist / 2), end, true_end);
+        #endif
+        }
 }
+
 
 int main(int argc, char** argv)
 {
@@ -73,7 +98,7 @@ int main(int argc, char** argv)
         }
 
         process(&lines);
-
-        std::cout << "{\n" << postprocess(&lines).jsonify() << "\n}\n";
+        line l = postprocess(lines.begin(), lines.end(), true);
+        std::cout << "{\n" << l.jsonify(2) << "}\n";
 
 }
