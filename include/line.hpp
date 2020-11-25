@@ -61,8 +61,11 @@ class line
                         if (this->count.size() > 0)
                         {
                                 ss << indent << "\"word_counts\": {" << std::endl;
-                                for (const auto& it : this->count)
-                                        ss << indent << "  \"" << it.first << "\":" << it.second << "," << std::endl;
+                                for (auto it = this->count.begin(); it != this->count.end(); it++)
+                                {
+                                        std::string trail = std::next(it) != this->count.end() ? "," : "";
+                                        ss << indent << "  \"" << it->first << "\":" << it->second << trail << std::endl;
+                                }
                                 ss << indent << "}" << std::endl;
                         }
 
@@ -71,7 +74,7 @@ class line
 
                 void process() const
                 {
-                        static std::regex r("\\b\\w+\\b");
+                        static std::regex r("\\b\\w+(\\S\\w+)?\\b");
 
                         unsigned char* md = new unsigned char[MD5_DIGEST_LENGTH];
                         char buf[2 * MD5_DIGEST_LENGTH] = {};
@@ -140,6 +143,31 @@ class line
                         }
 
                         return l;
+                }
+
+                line& operator+= (const line& other)
+                {
+                        std::map<std::string, uint>::const_iterator m1 = this->count.begin();
+                        std::map<std::string, uint>::const_iterator m2 = other.count.begin();
+                        
+                        while (m2 != other.count.end())
+                        {
+                                if (m1->first < m2->first)
+                                        m1++;
+                                else if (m1->first > m2->first)
+                                {
+                                        this->count.emplace_hint(m1, *m2);
+                                        m2++;
+                                }
+                                else
+                                {
+                                        this->count[m1->first] += m2->second;
+                                        m1++;
+                                        m2++;
+                                }
+                        }
+
+                        return *this;
                 }
 
                 bool operator< (const line& rhs) const
