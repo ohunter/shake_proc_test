@@ -19,12 +19,21 @@
 
 
 // Local definitions
-
+/**
+ * @brief A class which represents a single line in a file, while also allowing for processing of the content.
+ * 
+ */
 class line
 {
         uint64_t id = 0;
 
-        //Szudzik's pairing function for unsigned integers
+        /**
+         * @brief Szudzik's pairing function for unsigned integers used for calculating a unique ID from composite lines
+         * 
+         * @param x The first integer
+         * @param y The second integer
+         * @return uint64_t The unique ID
+         */
         uint64_t Szudzik(uint x, uint y) {
                 if (x != std::max(x, y))
                         return y * y + x;
@@ -40,8 +49,21 @@ class line
                 mutable std::string checksum = "";
                 mutable std::map<std::string, uint> count;
 
+                /**
+                 * @brief Construct a new line object
+                 * 
+                 * @param fn The file name which the line belongs to
+                 * @param i First part of the ID used to represent them in a set
+                 * @param j Second part of the ID used to represent them in a set
+                 */
                 line(std::string fn, uint i, uint j = 0) : id(Szudzik(j, i)), file_name(fn) {}
 
+                /**
+                 * @brief Takes the content of the class and outputs a JSON formatted string
+                 * 
+                 * @param indentation the number of spaces to indent with
+                 * @return std::string A JSON representation of the class
+                 */
                 std::string jsonify(int indentation = 0)
                 {
                         std::stringstream ss("");
@@ -72,6 +94,10 @@ class line
                         return ss.str();
                 }
 
+                /**
+                 * @brief Performs the processing stage for a given line. 
+                 * 
+                 */
                 void process() const
                 {
                         static std::regex r("\\b\\w+(\\S\\w+)?\\b");
@@ -86,7 +112,6 @@ class line
                                 it++;
                         }
 
-
                         MD5(reinterpret_cast<const unsigned char*>(this->content.c_str()), this->content.size(), md);
 
                         for (int i = 0; i < MD5_DIGEST_LENGTH; i++)
@@ -97,6 +122,12 @@ class line
                         delete[] md;
                 }
 
+                /**
+                 * @brief Merges two line objects
+                 * 
+                 * @param other The other line object
+                 * @return line A new line with the contents of both operands
+                 */
                 line operator+ (const line& other) const
                 {
                         line l(this->file_name, this->id, other.id);
@@ -145,6 +176,12 @@ class line
                         return l;
                 }
 
+                /**
+                 * @brief Merges two lines inplace
+                 * 
+                 * @param other The object which is being merged in
+                 * @return line& A reference to the newly merged object
+                 */
                 line& operator+= (const line& other)
                 {
                         std::map<std::string, uint>::const_iterator m1 = this->count.begin();
@@ -170,6 +207,13 @@ class line
                         return *this;
                 }
 
+                /**
+                 * @brief Computes whether a line is less than another through their IDs. Their IDs are guarunteed to be unique as long as their line numbers are unique through the pairing function defined above.
+                 * 
+                 * @param rhs The other line 
+                 * @return true This is less than the other line
+                 * @return false This is greater or equal than the other line
+                 */
                 bool operator< (const line& rhs) const
                 {
                         return this->id < rhs.id;
