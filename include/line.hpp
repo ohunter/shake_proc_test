@@ -42,7 +42,7 @@ public:
          * @param i First part of the ID used to represent them in a set
          * @param j Second part of the ID used to represent them in a set
          */
-        line(std::string fn, uint i, uint j = 0) : file_name(fn) {}
+        line(std::string fn) : file_name(fn) {}
 
         /**
          * @brief Performs the processing stage for a given line.
