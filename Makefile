@@ -1,5 +1,5 @@
 CXX=g++
-CXXFLAGS=-g -Wall -std=c++17
+CXXFLAGS=-g -Wall -std=c++17 -O3
 LIB=-lcrypto
 MP=-fopenmp
 
