@@ -66,7 +66,12 @@ void process(std::vector<line>* lines)
                 l.process();
 }
 
-
+/**
+ * @brief Performs the postprocessing stage
+ * 
+ * @param lines The vector of lines
+ * @return std::map<std::string, size_t> a map which maps all the words to their number of occurances.
+ */
 std::map<std::string, size_t> postprocess(std::vector<line>* lines)
 {
 
@@ -76,12 +81,16 @@ std::map<std::string, size_t> postprocess(std::vector<line>* lines)
                 std::map<std::string, size_t> threadWordCounts;
 
 #pragma omp for schedule(static)
-                for (size_t i = 0; i < lines->size(); i++) {
-                        for (auto const& [key, val] : (*lines)[i].count) {
-                                if (threadWordCounts.count(key)) {
+                for (size_t i = 0; i < lines->size(); i++)
+                {
+                        for (auto const& [key, val] : (*lines)[i].count)
+                        {
+                                if (threadWordCounts.count(key))
+                                {
                                         threadWordCounts[key] += val;
                                 }
-                                else {
+                                else
+                                {
                                         threadWordCounts[key] = val;
                                 }
                         }
@@ -89,11 +98,14 @@ std::map<std::string, size_t> postprocess(std::vector<line>* lines)
 
 #pragma omp critical
                 {
-                        for (auto const& [key, val] : threadWordCounts) {
-                                if (totalWordCounts.count(key)) {
+                        for (auto const& [key, val] : threadWordCounts)
+                        {
+                                if (totalWordCounts.count(key))
+                                {
                                         totalWordCounts[key] += val;
                                 }
-                                else {
+                                else
+                                {
                                         totalWordCounts[key] = val;
                                 }
                         }
