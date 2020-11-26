@@ -40,7 +40,7 @@ int preprocess(std::string path, std::vector<line>* lines)
 
         while (std::getline(file, s))
         {
-                line l(path, i);
+                line l(path);
                 l.line_num = i;
                 l.content = s;
 
