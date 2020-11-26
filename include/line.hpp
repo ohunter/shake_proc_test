@@ -45,42 +45,6 @@ public:
         line(std::string fn, uint i, uint j = 0) : file_name(fn) {}
 
         /**
-         * @brief Takes the content of the class and outputs a JSON formatted string
-         *
-         * @param indentation the number of spaces to indent with
-         * @return std::string A JSON representation of the class
-         */
-        std::string jsonify(int indentation = 0)
-        {
-                std::stringstream ss("");
-                std::string indent(indentation, ' ');
-
-                ss << indent << "\"file\": \"" << this->file_name << "\"," << std::endl;
-
-                if (this->line_num != 0)
-                        ss << indent << "\"line\":" << this->line_num << "," << std::endl;
-
-                if (this->content != "")
-                        ss << indent << "\"text\": \"" << this->content << "\"," << std::endl;
-
-                if (this->checksum != "")
-                        ss << indent << "\"md5sum\": \"" << this->checksum << "\"," << std::endl;
-
-                if (this->count.size() > 0)
-                {
-                        ss << indent << "\"word_counts\": {" << std::endl;
-                        for (auto it = this->count.begin(); it != this->count.end(); it++)
-                        {
-                                std::string trail = std::next(it) != this->count.end() ? "," : "";
-                                ss << indent << "  \"" << it->first << "\":" << it->second << trail << std::endl;
-                        }
-                        ss << indent << "}" << std::endl;
-                }
-
-                return ss.str();
-        }
-
-        /**
          * @brief Performs the processing stage for a given line.
          *
          */
