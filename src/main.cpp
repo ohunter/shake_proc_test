@@ -109,19 +109,19 @@ void output(std::string input_file, std::map<std::string, size_t> count)
 
         out.open("out.json");
         out << '{' << std::endl;
-        out << "\"file\":" << "\"" << input_file << "\"" << std::endl;
-        out << "\"word_counts\": {" << std::endl;
+        out << "  \"file\":" << "\"" << input_file << "\"," << std::endl;
+        out << "  \"word_counts\": {" << std::endl;
         for (auto it = count.begin(); it != count.end(); it++)
         {
-                out << "\"" << it->first << "\":" << it->second;
+                out << "    \"" << it->first << "\":" << it->second;
 
                 if (std::next(it) != count.end())
                         out << ",";
 
                 out << std::endl;
         }
-        out << '}' << std::endl;
-        out << '}' << std::endl;
+        out << "  }" << std::endl;
+        out << "}" << std::endl;
         out.close();
 }
 
@@ -140,6 +140,6 @@ int main(int argc, char** argv)
         process(&lines);
         auto m = postprocess(&lines);
 
-        output("out.json", m);
+        output(argv[1], m);
 
 }
