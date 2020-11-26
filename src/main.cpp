@@ -1,7 +1,7 @@
 // STL C++ Libraries
 #include <iostream>
 #include <fstream>
-#include <set>
+#include <vector>
 #include <numeric>
 
 // STL C Wrappers
@@ -18,14 +18,15 @@
 
 // Local definitions
 
+
 /**
  * @brief Performs the preprocess step.
- * 
+ *
  * @param path The path to the file
- * @param lines A set that will contain all the different lines from the file
+ * @param lines A vector that will contain all the different lines from the file
  * @return int 0 on success, -1 on failure.
  */
-int preprocess(std::string path, std::set<line> *lines)
+int preprocess(std::string path, std::vector<line>* lines)
 {
         std::ifstream file(path, std::ios::in);
         std::string s;
@@ -43,7 +44,7 @@ int preprocess(std::string path, std::set<line> *lines)
                 l.line_num = i;
                 l.content = s;
 
-                lines->emplace(l);
+                lines->emplace_back(l);
 
                 i++;
         }
@@ -52,115 +53,93 @@ int preprocess(std::string path, std::set<line> *lines)
 
 /**
  * @brief Performs the processing stage
- * 
- * @param lines The set of lines from the file
- */
-void process(std::set<line>* lines)
-{
-
-#if defined(_OPENMP)
-        int dist = std::distance(lines->begin(), lines->end());
-
-        #pragma omp parallel for
-        for (int i = 0; i < dist; i++)
-                std::next(lines->begin(), i)->process();
-#else
-        for (std::set<line>::iterator it = lines->begin(); it != lines->end(); it++)
-                it->process();
-#endif
-}
-
-/**
- * @brief Performs the postprocessing stage in a sequential manner
- * 
- * @param start The start of the sequence the function will be operating on
- * @param end The end of the sequence the function will be operating on
- * @param true_end Whether the last element is valid or not
- * @param dist The distance between start and end
- * @return line the line representing all the different lines in the sequence but merged together
- */
-line postprocess_seq(std::set<line>::iterator start, std::set<line>::iterator end, bool true_end, int dist = 1)
-{
-        if (dist == 1 && true_end)
-                return *start;
-        else if (dist == 1)
-                return *start + *end;
-        else
-                return postprocess_seq(start, std::next(start, dist / 2), false, dist / 2) + postprocess_seq(std::next(start, dist / 2), end, true_end, dist / 2);
-}
-
-#if defined(_OPENMP)
-/**
- * @brief Performs the postprocessing stage in a parallelized manner
  *
- * @param start The start of the sequence the function will be operating on
- * @param end The end of the sequence the function will be operating on
- * @param true_end Whether the last element is valid or not
- * @param dist The distance between start and end
- * @return line the line representing all the different lines in the sequence but merged together
+ * @param lines The vector of lines from the file
  */
-line postprocess_par(std::set<line>::iterator start, std::set<line>::iterator end, bool true_end, int dist = 1)
+void process(std::vector<line>* lines)
 {
-
-        if (dist <= 65536)
-                return postprocess_seq(start, end, true_end, dist);
-
-        line l1("", 0);
-        line l2("", 0);
-
-#pragma omp task shared(l1)
-        {l1 = postprocess_par(start, std::next(start, dist / 2), false, dist / 2);}
-
-#pragma omp task shared(l2)
-        {l2 = postprocess_par(std::next(start, dist / 2), end, true_end, dist / 2);}
-
-#pragma omp taskwait
-        return l1 + l2;
-}
-#endif
-
-/**
- * @brief Performs the postprocessing stage choosing between a parallel or sequential evaluation method depending on the libraries linked
- * 
- * @param start The start of the sequence the function will be operating on
- * @param end The end of the sequence the function will be operating on
- * @param true_end Whether the last element is valid or not
- * @return line the line representing all the different lines in the sequence but merged together
- */
-line postprocess(std::set<line>::iterator start, std::set<line>::iterator end, bool true_end)
-{
-        int dist = std::distance(start, end);
 
 #if defined(_OPENMP)
-        return postprocess_par(start, end, true_end, dist);
-#else
-        return postprocess_seq(start, end, true_end, dist);
+#pragma omp parallel for
 #endif
+        for (line& l : *lines)
+                l.process();
+}
+
+
+std::map<std::string, size_t> postprocess(std::vector<line>* lines)
+{
+
+        std::map<std::string, size_t> totalWordCounts;
+#pragma omp parallel
+        {
+                std::map<std::string, size_t> threadWordCounts;
+
+#pragma omp for schedule(static)
+                for (size_t i = 0; i < lines->size(); i++) {
+                        for (auto const& [key, val] : (*lines)[i].count) {
+                                if (threadWordCounts.count(key)) {
+                                        threadWordCounts[key] += val;
+                                }
+                                else {
+                                        threadWordCounts[key] = val;
+                                }
+                        }
+                }
+
+#pragma omp critical
+                {
+                        for (auto const& [key, val] : threadWordCounts) {
+                                if (totalWordCounts.count(key)) {
+                                        totalWordCounts[key] += val;
+                                }
+                                else {
+                                        totalWordCounts[key] = val;
+                                }
+                        }
+                }
+        }
+
+        return totalWordCounts;
+}
+
+void output(std::string input_file, std::map<std::string, size_t> count)
+{
+        std::ofstream out;
+
+        out.open("out.json");
+        out << '{' << std::endl;
+        out << "\"file\":" << "\"" << input_file << "\"" << std::endl;
+        out << "\"word_counts\": {" << std::endl;
+        for (auto it = count.begin(); it != count.end(); it++)
+        {
+                out << "\"" << it->first << "\":" << it->second;
+
+                if (std::next(it) != count.end())
+                        out << ",";
+
+                out << std::endl;
+        }
+        out << '}' << std::endl;
+        out << '}' << std::endl;
+        out.close();
 }
 
 
 int main(int argc, char** argv)
 {
         std::ofstream out;
-        std::set<line> lines;
-        line l(argv[1], 0);
+        std::vector<line> lines;
 
         if (preprocess(argv[1], &lines) != 0)
         {
                 std::cout << "Error in processing file" << std::endl;
                 return -1;
         }
-        #if defined(_OPENMP)
-        #pragma omp parallel num_threads(12)
-        #pragma omp single
-        #endif
-        {
-                process(&lines);
-                l = postprocess(lines.begin(), lines.end(), true);
-        }
 
-        out.open("out.json");
-        out << "{\n" << l.jsonify(2) << "}\n";
-        out.close();
+        process(&lines);
+        auto m = postprocess(&lines);
+
+        output("out.json", m);
 
 }
